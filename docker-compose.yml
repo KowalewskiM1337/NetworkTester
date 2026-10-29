@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   db:
     image: mysql:8.0
@@ -9,7 +7,7 @@ services:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: app_db
       MYSQL_USER: app_user
-      MYSQL_PASSWORD: 123
+      MYSQL_PASSWORD: SECRET_PASSWORD
     ports:
       - "3306:3306" # Pierwszy port 3306 to moj komputer zas drugi 3306 to wew. port kontenera
     volumes:

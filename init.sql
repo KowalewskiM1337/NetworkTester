@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(50) NOT NULL,
     role VARCHAR(20) DEFAULT 'user'
-)
+);
 
 
 -- Hosty dodane do monitorowania
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS monitored_hosts (
     interval_seconds INT DEFAULT 60,
     is_active TINYINT(1) DEFAULT 1,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE -- baza usunie automatycznie rekordy i logi, gdy uzytkownik usunie hosta z panelu
-)
+);
 
 -- Logi pomiarow tj. czas odpowiedzi 
 CREATE TABLE IF NOT EXISTS check_logs (
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS check_logs (
     http_status_code INT NULL,
     FOREIGN KEY (host_id) REFERENCES monitored_hosts(id) ON DELETE CASCADE,
     INDEX idx_host_time (host_id, timestamp)
-)
+);
 
 -- Tabela awarii (do obliczania SLA)
 CREATE TABLE IF NOT EXISTS incidents (
@@ -43,4 +43,4 @@ CREATE TABLE IF NOT EXISTS incidents (
     resolved_at DATETIME NULL,
     duration_seconds INT NULL,
     FOREIGN KEY (host_id) REFERENCES monitored_hosts(id) ON DELETE CASCADE
-)
+);
