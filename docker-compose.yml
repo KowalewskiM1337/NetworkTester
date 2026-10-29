@@ -5,12 +5,12 @@ services:
     image: mysql:8.0
     container_name: app_db
     restart: always
-    environment:
+    environment: # Zestaw zmiennych dla bazy danych tj. haslo administratora, nazwa bazy, nazwa i haslo uzytkownika
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: app_db
       MYSQL_USER: app_user
       MYSQL_PASSWORD: 123
     ports:
-      - "3306:3306"
+      - "3306:3306" # Pierwszy port 3306 to moj komputer zas drugi 3306 to wew. port kontenera
     volumes:
-      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
+      - "./init.sql:/docker-entrypoint-initdb.d/init.sql" # MySQL bedzie wykonywal wszystkie pliki .sql po uruchomieniu
