@@ -1,22 +1,24 @@
-from fastapi import FastAPI # klasa serwera aplikacji do zarzadzania routingiem czyli adresami url
-import aiomysql # biblioteka do komunikacji z mysql
-from contextlib import asynccontextmanager 
+from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional, Literal
+import pymysql
 
+app = FastAPI(title="NetworkTester")
 
-# Slownik ze wszystkimi parametrami do logowania z bazy
-DB_CONF = {
-    "host": "127.0.0.1",
-    "port": 3306,
-    "user": "app_user",
-    "password": "SECRET_PASSWORD",
-    "db": "app_db",
-    "autocommit": True
-}
+# Funkcja zwracająca połączenie do bazy danych
+def get_db():
+    return pymysql.connect(
+        host="127.0.0.1",
+        port=3306,
+        user="app_user",
+        password="SECRET_PASSWORD",
+        database="app_db",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True
+    )
 
-db_pool = None
-
+# Klasa walidacji danych. Ograniczam tylko do protokołów ICMP, TCP, HTTP
+# port jest opcjonalny, ponieważ do ICMP nie potrzebujemy portu
 class HostCreate(BaseModel):
     name: str
     target: str
@@ -24,73 +26,51 @@ class HostCreate(BaseModel):
     port: Optional[int] = None
     interval_seconds: Optional[int] = 60
 
-# Funkcja zarzadzajaca cyklem zycia
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global db_pool
-
-    # Dzieki tej bibliotece mozemy uruchomic pule połaczeń przed startem serwera a to kod wykonywany przed jego startem
-    db_pool = await aiomysql.create_pool(**DB_CONF) # inicjalizacja puli połączeń 
-    print("Polaczono z baza danych")
-
-
-    # Wstawienie domyslnego uzytkownika testowego z id o numerze 1, bo baza danych odrzuci operacje dodawania hosta z bledem klucza
-    async with db_pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("""
-                INSERT IGNORE INTO users (id, username, email, password)
-                VALUES (1, 'admin', 'admin@example.com', 'admin123');
-            """)
-
-
-    yield # Funkcja obsluguje zapytania i serwer działa. Wszystko przed yield funkcja wykonuje na starcie, a po podczas zamykania serwera
-
-    # Po zatrzymaniu serwera pula jest zamykana
-    if db_pool:
-        db_pool.close()
-        await db_pool.wait_closed()
-        print("Pula polaczen zamknieta")
-
-
-app = FastAPI(title="NetworkTester", lifespan=lifespan)
-
+# Funkcja testująca połączenie z bazą danych i zwracająca wynik ping-u protokołu ICMP
 @app.get("/health")
-async def health_check():
-    async with db_pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT 1;")
-            result = await cur.fetchone()
-            return {"status": "ok", "db_connection": True, "ping": result[0]}
+def health_check():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 AS ping;")
+    result = cursor.fetchone()
+    conn.close()
+    return {"status": "ok", "db_connection": True, "ping": result["ping"]}
 
 
+# 4. Dodawanie nowego hosta
+# Funkcja dodająca hosta 
 @app.post("/hosts", status_code=201)
-async def create_host(host: HostCreate):
-    query = """
+def create_host(host: HostCreate):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Zapewniam, że użytkownik testowy id=1 istnieje w bazie jako test
+    cursor.execute("""
+        INSERT IGNORE INTO users (id, username, email, password)
+        VALUES (1, 'admin', 'admin@example.com', 'admin123');
+    """)
+
+    # Wstawanie hosta 
+    sql = """
         INSERT INTO monitored_hosts (user_id, name, target, check_type, port, interval_seconds)
         VALUES (%s, %s, %s, %s, %s, %s);
     """
-    params = (1, host.name, host.target, host.check_type, host.port, host.interval_seconds)
+    values = (1, host.name, host.target, host.check_type, host.port, host.interval_seconds)
+    cursor.execute(sql, values)
+    new_id = cursor.lastrowid
+    conn.close()
 
-    async with db_pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(query, params)
-            new_id = cur.lastrowid
-            return {"id": new_id, "message": "Host dodany do monitorowania", **host.model_dump()}
+    return {"id": new_id, "message": "Host dodany", **host.model_dump()} # host.model_dump() rozpakowywuje dane i odsyła je w odpowiedzi wraz z id
 
 
+
+# Funkcja pobierająca listę hostów
 @app.get("/hosts")
-async def list_hosts():
-    query = """
-        SELECT id, name, target, check_type, port, interval_seconds, is_active, created_at
-        FROM monitored_hosts
-        WHERE is_active = 1;
-    """
-    async with db_pool.acquire() as conn:
-        async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute(query)
-            hosts = await cur.fetchall()
-            return hosts
-
-
-
+def list_hosts():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM monitored_hosts WHERE is_active = 1;")
+    hosts = cursor.fetchall()
+    conn.close()
+    return hosts
