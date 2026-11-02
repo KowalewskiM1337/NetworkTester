@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CloudPulse - Monitor Sieci</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>CloudPulse - Monitor Sieci</h1>
+
+    <div class="box">
+      <h3>Dodaj serwer do monitorowania</h3>
+      <input type="text" id="nazwa" placeholder="Nazwa (np. Brama)" />
+      <input type="text" id="adres" placeholder="Adres (np. 8.8.8.8)" />
+      <select id="typ">
+        <option value="ICMP">Ping (ICMP)</option>
+        <option value="HTTP">Strona (HTTP)</option>
+        <option value="TCP">Port (TCP)</option>
+      </select>
+      <button onclick="dodajHost()">Dodaj cel</button>
+    </div>
+
+    <div class="box">
+      <h3>Twoje serwery</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Nazwa</th>
+            <th>Adres</th>
+            <th>Typ</th>
+            <th>Status</th>
+            <th>Czas odpowiedzi</th>
+            <th>Akcja</th>
+          </tr>
+        </thead>
+        <tbody id="lista-hostow"></tbody>
+      </table>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

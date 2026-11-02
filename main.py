@@ -1,7 +1,24 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Literal
 import pymysql
+import time
+import socket
+import subprocess
+import requests
+
+app = FastAPI(title="NetworkTester")
+
+# Zezwolenie na połączenia z przeglądarki (CORS - Cross-Origin Resource Sharing) - musi być dodane, aby przeglądarka nie blokowała zapytań z frontendu
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app = FastAPI(title="NetworkTester")
 
@@ -14,7 +31,7 @@ def get_db():
         password="SECRET_PASSWORD",
         database="app_db",
         cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True
+        autocommit=True # dodaje autocommit, aby baza nie czekała na potwierdzenie operacji np. insert
     )
 
 # Klasa walidacji danych. Ograniczam tylko do protokołów ICMP, TCP, HTTP
@@ -45,7 +62,7 @@ def create_host(host: HostCreate):
     conn = get_db()
     cursor = conn.cursor()
 
-    # Zapewniam, że użytkownik testowy id=1 istnieje w bazie jako test
+    
     cursor.execute("""
         INSERT IGNORE INTO users (id, username, email, password)
         VALUES (1, 'admin', 'admin@example.com', 'admin123');
@@ -74,3 +91,21 @@ def list_hosts():
     hosts = cursor.fetchall()
     conn.close()
     return hosts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
