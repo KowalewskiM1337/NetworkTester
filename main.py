@@ -20,8 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app = FastAPI(title="NetworkTester")
-
 # Funkcja zwracająca połączenie do bazy danych
 def get_db():
     return pymysql.connect(
