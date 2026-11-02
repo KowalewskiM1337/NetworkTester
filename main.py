@@ -32,6 +32,62 @@ def get_db():
         autocommit=True # dodaje autocommit, aby baza nie czekała na potwierdzenie operacji np. insert
     )
 
+# Funkcje testujące odpowiednie protokoły
+
+# Testowa funkcja icmp
+def test_icmp(target: str):
+    # polecenie jako lista parametrow
+    # -c oznacza ilosc pakietow, w tym przypadku 1
+    # -W oznacza timeout, w tym przypadku po 2 sekundach
+    cmd = ["ping", "-c", "1", "-W", "2", target]
+    start = time.time()
+
+    exit_code = subprocess.call(cmd)
+    duration = round((time.time() - start) * 1000, 2) # zmiana z milisekund na sekundy i zaokraglenie tego do 2 miejsc po przecinku
+
+    if exit_code == 0:
+        return "UP", duration
+    else:
+        return "DOWN", duration, "Brak odpowiedzi ping" 
+
+
+# TEstowa funkcja TCP
+def test_tcp(target: str, port: int):
+
+    start_time = time.time()
+    # Aby wymusić zrobienie testu na protokole IPv4 zamiast IPv6 trzeba dodać gniazdo sieciowe
+
+    try:
+        connection = socket.create_connection((target, port), timeout = 2)
+        connection.close()
+        duration = round((time.time() - start.time) * 1000, 2)
+        return "UP", duration
+    except Exception:
+        duration = round((time.time()) * 1000, 2)
+        return "DOWN", duration, f"Port {port} nieosiagalny"
+
+# Testowa funkcja HTTP
+def test_http(target: str):
+    url = target
+
+    start_time = time.time()
+
+    try:
+        response = requests.get(url, timeout = 2)
+        duration = round((time.time() - start.time) * 1000, 2)
+
+        if response.status_code < 500:
+            return f"Status: UP \nCzas: {duration}"
+        else:
+            return f"Status: DOWN \nCzas: {duration} \nHTTP error: {response.status_code}"
+    except Exception:
+        duration = round((time.time() - start.time) * 1000, 2)
+        return f"Status: DOWN \nCzas: {duration} \nHTTP error: request failed"
+
+
+
+
+
 # Klasa walidacji danych. Ograniczam tylko do protokołów ICMP, TCP, HTTP
 # port jest opcjonalny, ponieważ do ICMP nie potrzebujemy portu
 class HostCreate(BaseModel):
@@ -89,6 +145,9 @@ def list_hosts():
     hosts = cursor.fetchall()
     conn.close()
     return hosts
+
+
+
 
 
 
