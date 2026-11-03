@@ -2,41 +2,107 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NetworkTester - Monitor Sieci</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h1>NetworkTester - Monitor Sieci</h1>
+    <!-- Górny pasek nawigacji -->
+    <nav class="navbar">
+      <div class="logo">NetworkTester</div>
+      <div class="nav-links" id="nav-menu">
+        <button class="btn-outline" onclick="pokazLogowanie()">
+          Logowanie
+        </button>
+        <button class="btn-outline" onclick="pokazRejestracje()">
+          Rejestracja
+        </button>
+      </div>
+    </nav>
 
-    <div class="box">
-      <h3>Dodaj serwer do monitorowania</h3>
-      <input type="text" id="nazwa" placeholder="Nazwa (np. Brama)" />
-      <input type="text" id="adres" placeholder="Adres (np. 8.8.8.8)" />
-      <select id="typ">
-        <option value="ICMP">Ping (ICMP)</option>
-        <option value="HTTP">Strona (HTTP)</option>
-        <option value="TCP">Port (TCP)</option>
-      </select>
-      <button onclick="dodajHost()">Dodaj cel</button>
+    <div class="container">
+      <!-- Sekcja Autoryzacji (Logowanie / Rejestracja) -->
+      <div id="auth-section" class="card auth-card">
+        <h2 id="auth-title">Logowanie</h2>
+        <div class="form-group">
+          <label>Email / Login:</label>
+          <input type="text" id="auth-login" placeholder="Wpisz login" />
+        </div>
+        <div class="form-group">
+          <label>Hasło:</label>
+          <input type="password" id="auth-password" placeholder="Wpisz hasło" />
+        </div>
+        <button class="btn-primary auth-btn" id="auth-submit">Zaloguj</button>
+        <p class="auth-switch">
+          Nie masz konta?
+          <span onclick="pokazRejestracje()">Zarejestruj się</span>
+        </p>
+      </div>
+
+      <!-- Główny Panel Aplikacji (Domyślnie ukryty) -->
+      <div id="dashboard-section" style="display: none">
+        <div class="card">
+          <h3>Dodaj serwer do monitorowania</h3>
+          <div class="add-host-grid">
+            <input type="text" id="nazwa" placeholder="Nazwa (np. Brama)" />
+            <input type="text" id="adres" placeholder="Adres (np. 8.8.8.8)" />
+            <select id="typ">
+              <option value="ICMP">Ping (ICMP)</option>
+              <option value="HTTP">Strona (HTTP)</option>
+              <option value="TCP">Port (TCP)</option>
+            </select>
+            <button class="btn-primary" onclick="dodajHost()">Dodaj cel</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Twoje serwery</h3>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nazwa</th>
+                  <th>Adres</th>
+                  <th>Typ</th>
+                  <th>Status</th>
+                  <th>Czas odpowiedzi</th>
+                  <th>Akcja</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Generowane przez JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="box">
-      <h3>Twoje serwery</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Nazwa</th>
-            <th>Adres</th>
-            <th>Typ</th>
-            <th>Status</th>
-            <th>Czas odpowiedzi</th>
-            <th>Akcja</th>
-          </tr>
-        </thead>
-        <tbody id="lista-hostow"></tbody>
-      </table>
-    </div>
+    <script src="script.js"></script>
+    <script>
+      // Proste przełączanie widoków w czystym JS dla interfejsu
+      function pokazLogowanie() {
+        document.getElementById("auth-title").innerText = "Logowanie";
+        document.getElementById("auth-submit").innerText = "Zaloguj";
+        document.querySelector(".auth-switch").innerHTML =
+          'Nie masz konta? <span onclick="pokazRejestracje()">Zarejestruj się</span>';
+      }
 
-    <script src="./script.js"></script>
+      function pokazRejestracje() {
+        document.getElementById("auth-title").innerText = "Rejestracja";
+        document.getElementById("auth-submit").innerText = "Załóż konto";
+        document.querySelector(".auth-switch").innerHTML =
+          'Masz już konto? <span onclick="pokazLogowanie()">Zaloguj się</span>';
+      }
+
+      // Symulacja logowania na potrzeby sprawdzenia wyglądu dashboardu
+      document.getElementById("auth-submit").onclick = function () {
+        document.getElementById("auth-section").style.display = "none";
+        document.getElementById("dashboard-section").style.display = "block";
+        document.getElementById("nav-menu").innerHTML =
+          '<button class="btn-outline" onclick="location.reload()">Wyloguj</button>';
+        pobierzHosty(); // Wywołanie funkcji z Twojego script.js
+      };
+    </script>
   </body>
 </html>

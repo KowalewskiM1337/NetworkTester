@@ -1,66 +1,214 @@
-body {
-  font-family: Arial, sans-serif;
-  background-color: #1a1a24;
-  color: #ffffff;
-  margin: 40px;
+:root {
+  --bg-color: #121212;
+  --surface-color: #1e1e1e;
+  --border-color: #333;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
+  --danger-color: #ef4444;
+  --success-color: #10b981;
 }
 
-.box {
-  background-color: #242435;
-  padding: 20px;
-  margin-bottom: 25px;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--surface-color);
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* Karty (Cards) */
+.card {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  border: 1px solid #3a3a50;
-  max-width: 800px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.card h3 {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+/* Autoryzacja */
+.auth-card {
+  max-width: 400px;
+  margin: 4rem auto;
+}
+
+.auth-card h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
 }
 
 input,
 select {
-  padding: 8px;
-  margin-right: 10px;
-  margin-bottom: 10px;
-  background-color: #12121a;
-  border: 1px solid #4a4a65;
-  color: white;
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   border-radius: 4px;
+  font-size: 1rem;
 }
 
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* Przyciski */
 button {
-  padding: 8px 14px;
-  background-color: #007acc;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background-color: var(--accent-color);
   color: white;
   border: none;
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+}
+
+.btn-outline:hover {
+  background-color: var(--border-color);
+}
+
+.auth-btn {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.auth-switch span {
+  color: var(--accent-color);
   cursor: pointer;
 }
 
-button:hover {
-  background-color: #005999;
+/* Grid dodawania hosta */
+.add-host-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Tabela */
+.table-responsive {
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 15px;
+  margin-top: 1rem;
 }
 
 th,
 td {
-  border: 1px solid #3a3a50;
-  padding: 10px;
+  padding: 0.75rem;
   text-align: left;
+  border-bottom: 1px solid var(--border-color);
 }
 
 th {
-  background-color: #12121a;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 
-.online {
-  color: #4ade80;
+td button {
+  background-color: transparent;
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  padding: 0.4rem 0.8rem;
+}
+
+td button:hover {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+/* Statusy w tabeli */
+.status-up {
+  color: var(--success-color);
+  font-weight: bold;
+}
+.status-down {
+  color: var(--danger-color);
   font-weight: bold;
 }
 
-.offline {
-  color: #f87171;
-  font-weight: bold;
+/* Responsywność */
+@media (max-width: 768px) {
+  .add-host-grid {
+    grid-template-columns: 1fr;
+  }
 }
