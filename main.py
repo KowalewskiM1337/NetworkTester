@@ -60,10 +60,10 @@ def test_tcp(target: str, port: int):
     try:
         connection = socket.create_connection((target, port), timeout = 2)
         connection.close()
-        duration = round((time.time() - start.time) * 1000, 2)
+        duration = round((time.time() - start_time) * 1000, 2)
         return "UP", duration
     except Exception:
-        duration = round((time.time()) * 1000, 2)
+        duration = round((time.time() - start_time) * 1000, 2)
         return "DOWN", duration, f"Port {port} nieosiagalny"
 
 # Testowa funkcja HTTP
@@ -74,14 +74,14 @@ def test_http(target: str):
 
     try:
         response = requests.get(url, timeout = 2)
-        duration = round((time.time() - start.time) * 1000, 2)
+        duration = round((time.time() - start_time) * 1000, 2)
 
         if response.status_code < 500:
             return f"Status: UP \nCzas: {duration}"
         else:
             return f"Status: DOWN \nCzas: {duration} \nHTTP error: {response.status_code}"
     except Exception:
-        duration = round((time.time() - start.time) * 1000, 2)
+        duration = round((time.time() - start_time) * 1000, 2)
         return f"Status: DOWN \nCzas: {duration} \nHTTP error: request failed"
 
 
