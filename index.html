@@ -80,8 +80,10 @@
 
     <script src="script.js"></script>
     <script>
-      // Proste przełączanie widoków w czystym JS dla interfejsu
+      let trybRejestracji = false;
+
       function pokazLogowanie() {
+        trybRejestracji = false;
         document.getElementById("auth-title").innerText = "Logowanie";
         document.getElementById("auth-submit").innerText = "Zaloguj";
         document.querySelector(".auth-switch").innerHTML =
@@ -89,19 +91,58 @@
       }
 
       function pokazRejestracje() {
+        trybRejestracji = true;
         document.getElementById("auth-title").innerText = "Rejestracja";
         document.getElementById("auth-submit").innerText = "Załóż konto";
         document.querySelector(".auth-switch").innerHTML =
           'Masz już konto? <span onclick="pokazLogowanie()">Zaloguj się</span>';
       }
 
-      // Symulacja logowania na potrzeby sprawdzenia wyglądu dashboardu
       document.getElementById("auth-submit").onclick = function () {
-        document.getElementById("auth-section").style.display = "none";
-        document.getElementById("dashboard-section").style.display = "block";
-        document.getElementById("nav-menu").innerHTML =
-          '<button class="btn-outline" onclick="location.reload()">Wyloguj</button>';
-        pobierzHosty(); // Wywołanie funkcji z Twojego script.js
+        const loginVal = document.getElementById("auth-login").value.trim();
+        const passwordVal = document
+          .getElementById("auth-password")
+          .value.trim();
+
+        if (!loginVal || !passwordVal) {
+          alert("Wypełnij login i hasło!");
+          return;
+        }
+
+        const endpoint = trybRejestracji ? "/register" : "/login";
+
+        fetch(API_URL + endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: loginVal, password: passwordVal }),
+        })
+          .then(async function (res) {
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.detail || "Błąd operacji");
+            }
+            return data;
+          })
+          .then(function (data) {
+            if (trybRejestracji) {
+              alert("Rejestracja udana! Teraz możesz się zalogować.");
+              pokazLogowanie();
+              document.getElementById("auth-password").value = "";
+            } else {
+              // Sukces logowania - przechodzimy do dashboardu
+              document.getElementById("auth-section").style.display = "none";
+              document.getElementById("dashboard-section").style.display =
+                "block";
+              document.getElementById("nav-menu").innerHTML = `
+                        <span style="margin-right: 15px; color: var(--text-secondary);">Zalogowano: <b>${data.username}</b></span>
+                        <button class="btn-outline" onclick="location.reload()">Wyloguj</button>
+                    `;
+              pobierzHosty();
+            }
+          })
+          .catch(function (err) {
+            alert(err.message);
+          });
       };
     </script>
   </body>

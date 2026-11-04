@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Literal
 import pymysql
@@ -9,10 +8,11 @@ import socket
 import subprocess
 import requests
 import platform
+import hashlib
 
 app = FastAPI(title="NetworkTester")
 
-# Zezwolenie na połączenia z przeglądarki (CORS - Cross-Origin Resource Sharing) - musi być dodane, aby przeglądarka nie blokowała zapytań z frontendu
+# Zezwolenie na połączenia z przeglądarki (CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Funkcja zwracająca połączenie do bazy danych
+# Połączenie z bazą danych MySQL
 def get_db():
     return pymysql.connect(
         host="127.0.0.1",
@@ -30,12 +30,10 @@ def get_db():
         password="SECRET_PASSWORD",
         database="app_db",
         cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True # dodaje autocommit, aby baza nie czekała na potwierdzenie operacji np. insert
+        autocommit=True
     )
 
-
-# Klasa walidacji danych. Ograniczam tylko do protokołów ICMP, TCP, HTTP
-# port jest opcjonalny, ponieważ do ICMP nie potrzebujemy portu
+# Modele danych
 class HostCreate(BaseModel):
     name: str
     target: str
@@ -43,18 +41,19 @@ class HostCreate(BaseModel):
     port: Optional[int] = None
     interval_seconds: Optional[int] = 60
 
-# Funkcje testujące odpowiednie protokoły
+class UserAuth(BaseModel):
+    username: str
+    password: str
 
-# Testowa funkcja icmp
-import platform
+# Prosta funkcja haszująca hasło (SHA-256)
+def hashuj_haslo(haslo: str) -> str:
+    return hashlib.sha256(haslo.encode()).hexdigest()
 
+# 1. Test ICMP (Ping)
 def test_icmp(target: str):
-    # Wykrywamy system operacyjny
     if platform.system().lower() == "windows":
-        # Windows: -n 1 (jeden pakiet), -w 2000 (timeout 2000 ms)
         cmd = ["ping", "-n", "1", "-w", "2000", target]
     else:
-        # Linux: -c 1 (jeden pakiet), -W 2 (timeout 2 sekundy)
         cmd = ["ping", "-c", "1", "-W", "2", target]
 
     start_time = time.time()
@@ -63,25 +62,21 @@ def test_icmp(target: str):
 
     if exit_code == 0:
         return "UP", duration, None
-    return "DOWN", duration, "Brak odpowiedzi ICMP" 
+    return "DOWN", duration, "Brak odpowiedzi ICMP"
 
-
-# TEstowa funkcja TCP
+# 2. Test TCP (Port) - zawsze zwraca 3 wartości: status, duration, error
 def test_tcp(target: str, port: int):
-
     start_time = time.time()
-    # Aby wymusić zrobienie testu na protokole IPv4 zamiast IPv6 trzeba dodać gniazdo sieciowe
-
     try:
-        connection = socket.create_connection((target, port), timeout = 2)
+        connection = socket.create_connection((target, port), timeout=2)
         connection.close()
         duration = round((time.time() - start_time) * 1000, 2)
-        return "UP", duration
+        return "UP", duration, None
     except Exception:
         duration = round((time.time() - start_time) * 1000, 2)
         return "DOWN", duration, f"Port {port} nieosiagalny"
 
-# Testowa funkcja HTTP
+# 3. Test HTTP - zawsze zwraca 3 wartości: status, duration, error
 def test_http(target: str):
     if not target.startswith("http://") and not target.startswith("https://"):
         url = "http://" + target
@@ -95,20 +90,51 @@ def test_http(target: str):
 
         if response.status_code < 500:
             return "UP", duration, None
-        return "DOWN", duration, f"HTTP error {response.status_code}"
-    except Exception as e:
+        return "DOWN", duration, f"HTTP błąd {response.status_code}"
+    except Exception:
         duration = round((time.time() - start_time) * 1000, 2)
-        return "DOWN", duration, "HTTP request failed"
+        return "DOWN", duration, "Nie udalo sie polaczyc z adresem HTTP"
 
 
+# --- ENDPOINTY AUTORYZACJI ---
+
+@app.post("/register")
+def register(user: UserAuth):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Sprawdzenie czy login już jest zajęty
+    cursor.execute("SELECT id FROM users WHERE username = %s;", (user.username,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=400, detail="Taki użytkownik już istnieje")
+
+    zahashowane = hashuj_haslo(user.password)
+    # Zapis do kolumny 'password' zgodnie z Twoją strukturą tabeli
+    cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s);", (user.username, zahashowane))
+    conn.close()
+
+    return {"message": "Rejestracja udana"}
+
+@app.post("/login")
+def login(user: UserAuth):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    zahashowane = hashuj_haslo(user.password)
+    # Weryfikacja w kolumnie 'password'
+    cursor.execute("SELECT id, username FROM users WHERE username = %s AND password = %s;", (user.username, zahashowane))
+    uzytkownik = cursor.fetchone()
+    conn.close()
+
+    if not uzytkownik:
+        raise HTTPException(status_code=401, detail="Błędny login lub hasło")
+
+    return {"message": "Zalogowano", "username": uzytkownik["username"]}
 
 
+# --- ENDPOINTY MONITORINGU ---
 
-
-
-
-# Funkcja testująca połączenie z bazą danych i zwracająca wynik ping-u protokołu ICMP
-# Pobranie listy wszystkich monitorowanych hostów
 @app.get("/hosts")
 def get_hosts():
     conn = get_db()
@@ -118,8 +144,6 @@ def get_hosts():
     conn.close()
     return hosts
 
-
-# Dodanie nowego hosta do monitorowania
 @app.post("/hosts")
 def create_host(host: HostCreate):
     conn = get_db()
@@ -131,54 +155,40 @@ def create_host(host: HostCreate):
     """
     cursor.execute(
         sql,
-        (
-            1,
-            host.name,
-            host.target,
-            host.check_type,
-            host.port,
-            host.interval_seconds,
-        ),
+        (1, host.name, host.target, host.check_type, host.port, host.interval_seconds)
     )
     new_id = cursor.lastrowid
     conn.close()
 
     return {"message": "Host dodany", "id": new_id}
 
-
-# Ręczne wywołanie testu dla danego hosta i zapis do bazy
 @app.post("/hosts/{host_id}/check")
 def check_host(host_id: int):
     conn = get_db()
     cursor = conn.cursor()
 
-    # 1. Pobieramy dane hosta z bazy
     cursor.execute("SELECT * FROM monitored_hosts WHERE id = %s;", (host_id,))
     host = cursor.fetchone()
 
     if not host:
         conn.close()
-        raise HTTPException(
-            status_code=404, detail=f"Host o ID {host_id} nie istnieje w bazie"
-        )
+        raise HTTPException(status_code=404, detail="Host nie istnieje")
 
     target = host["target"]
     check_type = host["check_type"]
     port = host["port"]
 
-    # 2. Wybieramy odpowiedni test
+    # Wybór testu
     if check_type == "ICMP":
         status, duration, error = test_icmp(target)
     elif check_type == "TCP":
-        # Jeśli port w bazie to None, próbujemy go wyciągnąć z adresu (np. 8.8.8.8:443)
         if not port:
             if ":" in target:
                 parts = target.split(":")
                 target = parts[0]
                 port = int(parts[1])
             else:
-                port = 80  # Domyślny port zapasowy, jeśli użytkownik żadnego nie podał
-
+                port = 80
         status, duration, error = test_tcp(target, port)
     elif check_type == "HTTP":
         status, duration, error = test_http(target)
@@ -186,8 +196,7 @@ def check_host(host_id: int):
         conn.close()
         raise HTTPException(status_code=400, detail="Nieznany typ testu")
 
-    # 3. Zapisujemy wynik do tabeli check_logs
-    # 3. Zapisujemy wynik do tabeli check_logs (tylko to, co niezbędne do statystyk)
+    # Zapis wyniku pomiaru do tabeli check_logs
     sql = """
         INSERT INTO check_logs (host_id, status, response_time_ms)
         VALUES (%s, %s, %s);
@@ -204,38 +213,17 @@ def check_host(host_id: int):
         "error_message": error,
     }
 
-
-# Usuwanie hosta (Soft delete - ukrycie rekordu)
 @app.delete("/hosts/{host_id}")
 def delete_host(host_id: int):
     conn = get_db()
     cursor = conn.cursor()
 
-    # Sprawdzamy czy host istnieje
     cursor.execute("SELECT id FROM monitored_hosts WHERE id = %s;", (host_id,))
     if not cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=404, detail="Host nie istnieje")
 
-    # Zamiast DELETE FROM używamy UPDATE, aby zachować logi w bazie (soft delete)
     cursor.execute("UPDATE monitored_hosts SET is_active = 0 WHERE id = %s;", (host_id,))
     conn.close()
 
     return {"message": "Host usunięty"}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
